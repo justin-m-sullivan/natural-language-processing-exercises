@@ -2,34 +2,44 @@ import pandas as pd
 import re
 import requests
 import bs4
+from bs4 import BeautifulSoup
 
 urls = ['https://codeup.com/codeups-data-science-career-accelerator-is-here/', 'https://codeup.com/data-science-myths/', 
         'https://codeup.com/data-science-vs-data-analytics-whats-the-difference/', 'https://codeup.com/10-tips-to-crush-it-at-the-sa-tech-job-fair/',
         'https://codeup.com/competitor-bootcamps-are-closing-is-the-model-in-danger/']
 
-def get_blog_articles(urls):
+
+def get_codeup_blog(url):
     '''
     This function takes in a list of URLS of codeup's blogs and 
     returns a list of dictionaries with each dictionary containing the title
     and content of each blog from the urls
     '''
+
+    headers = {'User-Agent': 'Codeup Data Science'}
+    response = requests.get(url, headers=headers)
+    html = response.text
+    soup = bs4.BeautifulSoup(html)
+        
+    blog_container = soup.select('.jupiterx-post')
+    blog = blog_container[0]
+        
+    title = blog.find('h1').text
+    content = blog.select('.jupiterx-post-content')[0].text
     output = {}
-    
-    for url in urls:
-        headers = {'User-Agent': 'Codeup Data Science'}
-        response = requests.get(url, headers=headers)
-        html = response.text
-        soup = bs4.BeautifulSoup(html)
+    output["title"] = title
+    output["content"] = content
         
-        blog_container = soup.select('.jupiterx-post')
-        blog = blog_container[0]
-        
-        blog_dict = {"title": blog.find('h1').text,
-        "content": blog.select('.jupiterx-post-content')[0].text}
-        
-        output.append(blog_dict)
         
     return  output
+
+
+def get_blog_articles(urls):
+    # List of dictionaries
+    posts = [get_codeup_blog(url) for url in urls]
+    
+    return pd.DataFrame(posts)
+
 
 
 def get_article(article, category):
@@ -61,7 +71,7 @@ def get_articles(category):
     headers = {"User-Agent": "Codeup-data-science"}
 
     # Get the http response object from the server
-    response = get(url, headers=headers)
+    response = requests.get(url, headers=headers)
 
     # Make soup out of the raw html
     soup = BeautifulSoup(response.text)
@@ -85,11 +95,11 @@ def get_articles(category):
 
 
 def get_all_news_articles(categories):
-    """
+    '''
     Takes in a list of categories where the category is part of the URL pattern on inshorts
     Returns a dataframe of every article from every category listed
     Each row in the dataframe is a single article
-    """
+    '''
     all_inshorts = []
 
     for category in categories:
